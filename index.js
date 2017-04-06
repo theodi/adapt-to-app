@@ -57,7 +57,10 @@ function cordova_build(platform) {
 	return;
     } //
 
-    fs.moveSync(app, path.join(buildDir, path.basename(app)), true);
+    const outputName = path.join(buildDir, path.basename(app));
+    if (fs.existsSync(outputName))
+	fs.unlinkSync(outputName);
+    fs.moveSync(app, outputName, true);
     console.log("\n\nBuilt " + path.basename(app));
 } // cordova_build
 
