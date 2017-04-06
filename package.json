@@ -1,0 +1,24 @@
+{
+  "name": "adapt-to-app",
+  "version": "1.0.0",
+  "description": "Takes an Adapt eLearning course and converts it, via the miracle of Cordova, into iOS and Android apps.",
+  "main": "index.js",
+  "dependencies": {
+    "extract-zip": "^1.6.0",
+    "wget-improved": "1.4.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jezhiggins/adapt-to-app.git"
+  },
+  "author": "Jez Higgins, Dave Tarrant, The ODI",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jezhiggins/adapt-to-app/issues"
+  },
+  "homepage": "https://github.com/jezhiggins/adapt-to-app#readme"
+}
