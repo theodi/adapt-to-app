@@ -11,15 +11,19 @@ const buildDir = process.cwd();
 
 // unzip package here
 // parse out config
+
+const macosx = (process.platform === "darwin");
+
 const appDir = "app";
 const appId = "org.theodi.megavision";
 const appName = "MegaVision";
 
-create_and_configure(appDir, appId, appName);
-cordova("build android");
-cordova("build ios");
+cordova_create(appDir, appId, appName);
+cordova_build("android");
+cordova_build("ios");
 
-function create_and_configure(appDir, appId, appName) {
+////////////////////////////////////
+function cordova_create(appDir, appId, appName) {
     const fs = require('fs');
     if (fs.existsSync(appDir)) {
 	console.log("woo");
@@ -31,8 +35,15 @@ function create_and_configure(appDir, appId, appName) {
     change_to_appDir();
     cordova("plugin add https://github.com/agamemnus/cordova-plugin-xapkreader.git#cordova-6.5.0");
     cordova("platform add android");
-    cordova("platform add ios");
-} // create_and_configure
+    if (macosx)
+	cordova("platform add ios");
+} // cordova_create
+
+function cordova_build(platform) {
+    if (!macosx && (platform === "ios"))
+	return;
+    cordova("build", platform);
+} // cordova_build
 
 function cordova(command, ...options) {
     const child_process = require('child_process');
@@ -40,8 +51,10 @@ function cordova(command, ...options) {
     const cmd = "cordova " + command + " " + options.join(" ");
     console.log(cmd);
     child_process.execSync(prefix + cmd, { stdio: 'inherit' })
-}
+} // cordova
+
+
 
 function change_to_appDir() {
     process.chdir(appDir);
-}
+} // change_to_appDir
