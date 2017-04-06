@@ -6,6 +6,7 @@
   "dependencies": {
     "cordova": "^6.5.0",
     "extract-zip": "^1.6.0",
+    "fs-extra": "^2.1.2",
     "wget-improved": "1.4.0"
   },
   "devDependencies": {},
