@@ -50,7 +50,7 @@ function cordova_build(platform) {
     cordova("build", platform);
 
     // find build product
-    const suffix = {"android": ".apk", "ios": ".trousers"};
+    const suffix = {"android": ".apk", "ios": ".app"};
     const app = find_app(suffix[platform]);
     if (!app) {
 	console.log("\n\nCould not find " + platform + " app!\n\n");
