@@ -14,6 +14,11 @@ const appDir = path.join(buildDir, "app");
 
 unwrap_zip_file(process.argv).
     then(verify_zip_file).
+    then(java_version.check).
+    then(android_install.check).
+    then(cordova_create).
+    then(cordova_android_build).
+    then(cordova_ios_build).
     catch((error) => console.log(error));
 
 //java_version.check().
@@ -80,32 +85,27 @@ function verify_zip_file() {
 
 /////////////////////////////////////
 /////////////////////////////////////
-function build_app() {
-    // unzip package here
-    // parse out config
-
-    const appId = "org.theodi.megavision";
-    const appName = "MegaVision";
-
-    cordova_create(appDir, appId, appName);
-    cordova_build("android", "-fat");
-    cordova_build("ios");
-} // build_app
-
-////////////////////////////////////
-function cordova_create(appDir, appId, appName) {
+function cordova_create() {
     if (fs.existsSync(appDir)) {
 	change_to_appDir();
 	return;
     } // if ...
 
-    cordova("create", appDir, appId, appName);
+    cordova("create", appDir, "org.place.holder", "PlaceHolder");
     change_to_appDir();
     cordova("plugin add https://github.com/agamemnus/cordova-plugin-xapkreader.git#cordova-6.5.0");
     cordova("platform add android");
     if (macosx)
 	cordova("platform add ios");
 } // cordova_create
+
+function cordova_android_build() {
+    cordova_build("android", "-fat");
+} // cordova_android_build
+
+function cordova_ios_build() {
+    cordova_build("ios");
+} // cordova_ios_build
 
 function cordova_build(platform, modifier) {
     if (!macosx && (platform === "ios"))
