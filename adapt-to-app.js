@@ -23,6 +23,9 @@ open_zip_file(process.argv).
     then(build_cordova).
     catch((error) => console.log(error));
 
+
+add_obb_hooks();
+
 function banner(msg) {
     console.log(colors.magenta.bold(msg));
 } // banner
@@ -52,10 +55,27 @@ function setup_adapt_source() {
 } // setup_adapt_source
 
 function build_cordova() {
-    banner("Building apps ...");
-    cordova.android_build(appDir);
-    cordova.ios_build(appDir);
+    build_ios();
+    build_android();
+    build_slim_android();
 } // build_cordova
+
+function build_ios() {
+    banner("Building ios ...");
+    cordova.ios_build(appDir);
+} // build_ios
+
+function build_android() {
+    banner("Building Android ...");
+    remove_obb_hooks();
+    cordova.android_build(appDir, "-fat")
+} // build_android
+
+function build_slim_android() {
+    banner("Building slim Android ...");
+    add_obb_hooks();
+    cordova.android_build(appDir, "-slim", true);
+} // build_slim_android
 
 ////////////////////////////////////////////
 ////////////////////////////////////////////
@@ -146,6 +166,31 @@ function update_config_xml() {
     });
     return p;
 } // update_config_xml
+
+function add_obb_hooks() {
+    remove_obb_hooks();
+    const cordova_config = read_cordova_config_xml();
+    const android_node = cordova_config.find("./platform[@name='android']");
+    const hooks = [["after_prepare", "../scripts/android/package_videos.rb"],
+		   ["after_run", "../scripts/android/install_obb.rb"]];
+    for (const hook of hooks) {
+	const hook_node = elementtree.SubElement(android_node, "hook");
+	hook_node.set("type", hook[0]);
+	hook_node.set("src", hook[1]);
+    } // for ...
+
+    write_cordova_config_xml(cordova_config);
+} // add_obb_hooks
+
+function remove_obb_hooks() {
+    const cordova_config = read_cordova_config_xml();
+    const android_node = cordova_config.find("./platform[@name='android']");
+
+    for(const hook of android_node.findall("./hook"))
+	android_node.remove(hook);
+
+    write_cordova_config_xml(cordova_config);
+} // remove_obb_hooks
 
 function read_adapt_course_json() {
     const course_json_filename = "course.json";
