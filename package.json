@@ -2,7 +2,7 @@
   "name": "adapt-to-app",
   "version": "1.0.0",
   "description": "Takes an Adapt eLearning course and converts it, via the miracle of Cordova, into iOS and Android apps.",
-  "main": "index.js",
+  "main": "adapt-to-app.js",
   "dependencies": {
     "cordova": "^6.5.0",
     "extract-zip": "^1.6.0",
