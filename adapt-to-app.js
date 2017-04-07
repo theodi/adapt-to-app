@@ -52,14 +52,14 @@ function setup_adapt_source() {
 } // setup_adapt_source
 
 function build_cordova() {
-    build_ios();
     build_android();
     build_slim_android();
+    build_ios();
 } // build_cordova
 
 function build_ios() {
-    //banner("Building ios ...");
-    //cordova.ios_build(appDir);
+    banner("Building ios ...");
+    cordova.ios_build(appDir);
 } // build_ios
 
 function build_android() {
