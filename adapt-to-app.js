@@ -3,6 +3,7 @@
 
 const java_version = require("./lib/java_version");
 const android_install = require("./lib/android_install");
+const progress = require("./lib/progress_bar");
 
 const fs = require('fs-extra');
 const path = require('path');
@@ -18,7 +19,7 @@ unwrap_zip_file(process.argv).
     then(android_install.check).
     then(cordova_create).
     then(drop_adapt_into_cordova).
-//    then(cordova_android_build).
+    then(cordova_android_build).
 //    then(cordova_ios_build).
     catch((error) => console.log(error));
 
@@ -66,12 +67,12 @@ function drop_adapt_into_cordova() {
 	clean_directory(www_dir);
 
 	const files = gather_files(tmpDir);
-	console.log("Copying " + files.length + " files");
 
-	for (const file of files) {
-	    console.log("Copying " + file + " ... ");
-	    copy_file(file, tmpDir, www_dir);
-	}
+	for (let i = 0; i != files.length; ++i) {
+	    copy_file(files[i], tmpDir, www_dir);
+	    progress.bar(files[i], (i/files.length*100));
+	} // for ...
+	progress.bar("Copied " + files.length + " files", 100);
 
 	resolve();
     });
@@ -163,6 +164,7 @@ function cordova_ios_build() {
 function cordova_build(platform, modifier) {
     if (!macosx && (platform === "ios"))
 	return;
+    change_to_appDir();
     cordova("build", platform);
 
     // find build product
