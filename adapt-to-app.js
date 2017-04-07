@@ -23,9 +23,6 @@ open_zip_file(process.argv).
     then(build_cordova).
     catch((error) => console.log(error));
 
-
-add_obb_hooks();
-
 function banner(msg) {
     console.log(colors.magenta.bold(msg));
 } // banner
@@ -61,8 +58,8 @@ function build_cordova() {
 } // build_cordova
 
 function build_ios() {
-    banner("Building ios ...");
-    cordova.ios_build(appDir);
+    //banner("Building ios ...");
+    //cordova.ios_build(appDir);
 } // build_ios
 
 function build_android() {
@@ -150,10 +147,13 @@ function update_config_xml() {
 	    ["authorName", "widget/author"],
 	    ["authorEmail", "widget/author/@email"],
 	    ["authorWebsite", "widget/author/@href"],
+	    ["appIcon", "widget/icon/@src", "../tmp/"]
 	];
 
 	for (let i = 0; i != mappings.length; ++i) {
-	    const value = course_json[mappings[i][0]];
+	    let value = course_json[mappings[i][0]];
+	    if (mappings[i][2])
+		value = mappings[i][2] + value;
 	    const xpath = mappings[i][1];
 	    progress.bar(mappings[i][0] + " = " + value, i/mappings.length*100);
 	    xml_set(cordova_config, xpath, value);
@@ -231,12 +231,20 @@ function xml_set(doc, long_xpath, value) {
     const elemPath = (at == -1) ? xpath : xpath.substring(0, at-1);
     const atPath = (at == -1) ? null : xpath.substring(at+1);
 
-    const node = doc.find(elemPath);
-    if (!node)
-	throw("Could not find " + long_xpath + " in Cordova config xml")
+    let node = doc.find(elemPath);
+    if (!node) {
+	node = doc.find('.');
+	const [, ...steps] = elemPath.split("/");
+	for (const step of steps) {
+	    let next = node.find("./" + step);
+	    if (!next)
+		next = elementtree.SubElement(node, step);
+	    node = next;
+	}
+    } // if ...
 
     if (atPath)
-	node.attrib[atPath] = value;
+	node.set(atPath, value);
     else
 	node.text = value;
 } // xml_set
