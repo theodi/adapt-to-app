@@ -88,7 +88,7 @@ function build_app() {
     const appName = "MegaVision";
 
     cordova_create(appDir, appId, appName);
-    cordova_build("android");
+    cordova_build("android", "-fat");
     cordova_build("ios");
 } // build_app
 
@@ -107,24 +107,25 @@ function cordova_create(appDir, appId, appName) {
 	cordova("platform add ios");
 } // cordova_create
 
-function cordova_build(platform) {
+function cordova_build(platform, modifier) {
     if (!macosx && (platform === "ios"))
 	return;
     cordova("build", platform);
 
     // find build product
-    const suffix = {"android": ".apk", "ios": ".app"};
-    const app = find_app(suffix[platform]);
+    const suffix = {"android": ".apk", "ios": ".app"}[platform];
+    const app = find_app(suffix);
     if (!app) {
 	console.log("\n\nCould not find " + platform + " app!\n\n");
 	return;
-    } //
+    } // if ...
 
-    const outputName = path.join(buildDir, path.basename(app));
+    modifier = modifier || "";
+    const outputName = path.join(buildDir, path.basename(app, suffix)) + modifier + suffix;
     if (fs.existsSync(outputName))
 	fs.unlinkSync(outputName);
     fs.moveSync(app, outputName, true);
-    console.log("\n\nBuilt " + path.basename(app));
+    console.log("\n\nBuilt " + path.basename(outputName));
 } // cordova_build
 
 function cordova(command, ...options) {
