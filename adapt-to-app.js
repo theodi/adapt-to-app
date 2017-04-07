@@ -3,26 +3,27 @@
 
 const java_version = require("./lib/java_version");
 const android_install = require("./lib/android_install");
+const cordova = require("./lib/cordova_wrapper");
 const progress = require("./lib/progress_bar");
 
-const fs = require('fs-extra');
-const path = require('path');
+const fs = require("fs-extra");
+const path = require("path");
 
-const macosx = (process.platform === "darwin");
-const buildDir = path.dirname(process.argv[1])
-const tmpDir = path.join(buildDir, "tmp");
-const appDir = path.join(buildDir, "app");
+const adaptToAppDir = path.resolve(path.dirname(process.argv[1]))
+const tmpDir = path.join(adaptToAppDir, "tmp");
+const appDir = path.join(adaptToAppDir, "app");
+
+//update_config_xml();
 
 unwrap_zip_file(process.argv).
     then(verify_zip_file).
     then(java_version.check).
     then(android_install.check).
-    then(cordova_create).
+    then(() => cordova.create(appDir)).
     then(drop_adapt_into_cordova).
-    then(cordova_android_build).
+    then(() => cordova.android_build(appDir)).
 //    then(cordova_ios_build).
     catch((error) => console.log(error));
-
 
 ////////////////////////////////////////////
 ////////////////////////////////////////////
@@ -79,6 +80,9 @@ function drop_adapt_into_cordova() {
     });
     return p;
 } // drop_adapt_into_cordova
+
+function update_config_xml() {
+} // update_config_xml
 
 
 function clean_tmp_directory() {
@@ -142,70 +146,3 @@ function copy_file(name, srcRootDir, destRootDir) {
 
 /////////////////////////////////////
 /////////////////////////////////////
-function cordova_create() {
-    if (fs.existsSync(appDir))
-	return;
-
-    cordova("create", appDir, "org.place.holder", "PlaceHolder");
-    change_to_appDir();
-    cordova("plugin add https://github.com/agamemnus/cordova-plugin-xapkreader.git#cordova-6.5.0");
-    cordova("platform add android");
-    if (macosx)
-	cordova("platform add ios");
-} // cordova_create
-
-function cordova_android_build() {
-    cordova_build("android", "-fat");
-} // cordova_android_build
-
-function cordova_ios_build() {
-    cordova_build("ios");
-} // cordova_ios_build
-
-function cordova_build(platform, modifier) {
-    if (!macosx && (platform === "ios"))
-	return;
-    change_to_appDir();
-    cordova("build", platform);
-
-    // find build product
-    const suffix = {"android": ".apk", "ios": ".app"}[platform];
-    const app = find_app(suffix);
-    if (!app) {
-	console.log("\n\nCould not find " + platform + " app!\n\n");
-	return;
-    } // if ...
-
-    modifier = modifier || "";
-    const outputName = path.join(buildDir, path.basename(app, suffix)) + modifier + suffix;
-    if (fs.existsSync(outputName))
-	fs.unlinkSync(outputName);
-    fs.moveSync(app, outputName, true);
-    console.log("\n\nBuilt " + path.basename(outputName));
-} // cordova_build
-
-function cordova(command, ...options) {
-    const child_process = require('child_process');
-    const prefix = path.join(buildDir, "/node_modules/cordova/bin/");
-    const cmd = "cordova " + command + " " + options.join(" ");
-    console.log(cmd);
-    child_process.execSync(prefix + cmd, { stdio: 'inherit' })
-} // cordova
-
-function find_app(suffix, dir = process.cwd() + "/platforms") {
-    for (const name of fs.readdirSync(dir)) {
-	const fullName = path.join(dir, name);
-	const stat = fs.statSync(fullName);
-	if (stat.isFile() && name.endsWith(suffix))
-	    return fullName;
-	if (stat.isDirectory()) {
-	    let app = find_app(suffix, fullName);
-	    if (app)
-		return app;
-	} // if ...
-    }
-} // find_app
-
-function change_to_appDir() {
-    process.chdir(appDir);
-} // change_to_appDir
