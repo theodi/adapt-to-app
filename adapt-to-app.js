@@ -68,6 +68,7 @@ function drop_adapt_into_cordova() {
 
 	const files = gather_files(tmpDir);
 
+	console.log("Copying Adapt files into Cordova build")
 	for (let i = 0; i != files.length; ++i) {
 	    copy_file(files[i], tmpDir, www_dir);
 	    progress.bar(files[i], (i/files.length*100));
