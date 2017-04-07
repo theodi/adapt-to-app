@@ -17,14 +17,13 @@ unwrap_zip_file(process.argv).
     then(java_version.check).
     then(android_install.check).
     then(cordova_create).
-    then(cordova_android_build).
-    then(cordova_ios_build).
+    then(drop_adapt_into_cordova).
+//    then(cordova_android_build).
+//    then(cordova_ios_build).
     catch((error) => console.log(error));
 
-//java_version.check().
-//    then(android_install.check).
-//    then(build_app);
 
+////////////////////////////////////////////
 ////////////////////////////////////////////
 function unwrap_zip_file(args) {
     const p = new Promise((resolve, reject) => {
@@ -50,6 +49,36 @@ function unwrap_zip_file(args) {
     return p;
 } // unwrap_zip_file
 
+function verify_zip_file() {
+    const p = new Promise((resolve, reject) => {
+	const check_files = ["index.html", "adapt", "course/config.json", "course/en/course.json"];
+	for (const c of check_files)
+	    if (!fs.existsSync(path.join(tmpDir, c)))
+		reject("Doesn't look like an Adapt zipfile.  Could not find file " + c);
+	resolve();
+    });
+    return p;
+} // verify_zip_file
+
+function drop_adapt_into_cordova() {
+    const p = new Promise((resolve, reject) => {
+	const www_dir = path.join(appDir, "www");
+	clean_directory(www_dir);
+
+	const files = gather_files(tmpDir);
+	console.log("Copying " + files.length + " files");
+
+	for (const file of files) {
+	    console.log("Copying " + file + " ... ");
+	    copy_file(file, tmpDir, www_dir);
+	}
+
+	resolve();
+    });
+    return p;
+} // drop_adapt_into_cordova
+
+
 function clean_tmp_directory() {
     if (!fs.existsSync(tmpDir)) {
 	fs.mkdirSync(tmpDir);
@@ -72,24 +101,48 @@ function clean_directory(dir) {
     } // for ...
 } // clean_directory
 
-function verify_zip_file() {
-    const p = new Promise((resolve, reject) => {
-	const check_files = ["index.html", "adapt", "course/config.json", "course/en/course.json"];
-	for (const c of check_files)
-	    if (!fs.existsSync(path.join(tmpDir, c)))
-		reject("Doesn't look like an Adapt zipfile.  Could not find file " + c);
-	resolve();
-    });
-    return p;
-} // verify_zip_file
+function gather_files(dir, topmost = dir) {
+    let files = [];
+    const relDir = dir.substring(topmost.length);
+    for (const name of fs.readdirSync(dir)) {
+	const fullName = path.join(dir, name);
+	const stat = fs.statSync(fullName);
+	if (stat.isFile())
+	    files.push(path.join(relDir, name));
+	if (stat.isDirectory())
+	    files.push(...gather_files(fullName, topmost));
+    } // for ...
+    return files;
+} // gather_files
+
+function copy_file(name, srcRootDir, destRootDir) {
+    const srcName = path.join(srcRootDir, name);
+    const destName = path.join(destRootDir, name);
+    const destDir = path.dirname(destName);
+
+    if (!fs.existsSync(destDir))
+	fs.mkdirsSync(destDir);
+
+    const BUF_LENGTH = 64*1024;
+    const buff = new Buffer(BUF_LENGTH);
+    const bytesToRead = fs.statSync(srcName).size;
+
+    const fdr = fs.openSync(srcName, fs.constants.O_RDONLY);
+    const fdw = fs.openSync(destName, fs.constants.O_CREAT|fs.constants.O_TRUNC|fs.constants.O_WRONLY);
+    for (let pos = 0; pos != bytesToRead; ) {
+	let bytesRead = fs.readSync(fdr, buff, 0, BUF_LENGTH, pos);
+	fs.writeSync(fdw, buff, 0, bytesRead);
+	pos += bytesRead;
+    } // for ...
+    fs.closeSync(fdr);
+    fs.closeSync(fdw);
+} // copy_file
 
 /////////////////////////////////////
 /////////////////////////////////////
 function cordova_create() {
-    if (fs.existsSync(appDir)) {
-	change_to_appDir();
+    if (fs.existsSync(appDir))
 	return;
-    } // if ...
 
     cordova("create", appDir, "org.place.holder", "PlaceHolder");
     change_to_appDir();
