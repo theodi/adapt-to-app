@@ -5,25 +5,57 @@ const java_version = require("./lib/java_version");
 const android_install = require("./lib/android_install");
 const cordova = require("./lib/cordova_wrapper");
 const progress = require("./lib/progress_bar");
+const find_file = require("./lib/find_file");
 
 const fs = require("fs-extra");
 const path = require("path");
+const elementtree = require("elementtree");
+const colors = require("colors/safe");
 
 const adaptToAppDir = path.resolve(path.dirname(process.argv[1]))
 const tmpDir = path.join(adaptToAppDir, "tmp");
 const appDir = path.join(adaptToAppDir, "app");
 
-//update_config_xml();
-
-unwrap_zip_file(process.argv).
-    then(verify_zip_file).
-    then(java_version.check).
-    then(android_install.check).
-    then(() => cordova.create(appDir)).
-    then(drop_adapt_into_cordova).
-    then(() => cordova.android_build(appDir)).
-//    then(cordova_ios_build).
+open_zip_file(process.argv).
+    then(check_environment).
+    then(setup_cordova).
+    then(setup_adapt_source).
+    then(build_cordova).
     catch((error) => console.log(error));
+
+function banner(msg) {
+    console.log(colors.magenta.bold(msg));
+} // banner
+
+function open_zip_file(argv) {
+    banner("Opening Adapt zip file ...");
+    return unwrap_zip_file(argv).
+	then(verify_zip_file);
+} // open_zip_file
+
+function check_environment() {
+    banner("Checking Environment ...");
+    return java_version.check().
+	then(android_install.check);
+} // check_environment
+
+function setup_cordova() {
+    const [appId, appName] = grab_adapt_details();
+    banner("Setting up Cordova " + appId + "." + appName + " ...");
+    return cordova.create(appDir, appId, appName);
+} // setup_cordova
+
+function setup_adapt_source() {
+    banner("Updating source and config ...");
+    return drop_adapt_into_cordova().
+	then(update_config_xml);
+} // setup_adapt_source
+
+function build_cordova() {
+    banner("Building apps ...");
+    cordova.android_build(appDir);
+    cordova.ios_build(appDir);
+} // build_cordova
 
 ////////////////////////////////////////////
 ////////////////////////////////////////////
@@ -53,7 +85,7 @@ function unwrap_zip_file(args) {
 
 function verify_zip_file() {
     const p = new Promise((resolve, reject) => {
-	const check_files = ["index.html", "adapt", "course/config.json", "course/en/course.json"];
+	const check_files = ["index.html", "adapt", "course/config.json"];
 	for (const c of check_files)
 	    if (!fs.existsSync(path.join(tmpDir, c)))
 		reject("Doesn't look like an Adapt zipfile.  Could not find file " + c);
@@ -81,10 +113,91 @@ function drop_adapt_into_cordova() {
     return p;
 } // drop_adapt_into_cordova
 
+function grab_adapt_details() {
+    const course_json = read_adapt_course_json();
+    return [course_json["id"], course_json["name"].replace(" ", "")];
+} // grab_adapt_details
+
 function update_config_xml() {
+    const p = new Promise((resolve, reject) => {
+	console.log("Updating Cordova config.xml");
+	const course_json = read_adapt_course_json();
+	const cordova_config = read_cordova_config_xml();
+
+	const mappings = [
+	    ["description", "widget/description"],
+	    ["version", "widget/@version"],
+	    ["authorName", "widget/author"],
+	    ["authorEmail", "widget/author/@email"],
+	    ["authorWebsite", "widget/author/@href"],
+	];
+
+	for (let i = 0; i != mappings.length; ++i) {
+	    const value = course_json[mappings[i][0]];
+	    const xpath = mappings[i][1];
+	    progress.bar(mappings[i][0] + " = " + value, i/mappings.length*100);
+	    xml_set(cordova_config, xpath, value);
+	} // for ...
+
+	progress.bar("Updated Cordova config", 100);
+
+	write_cordova_config_xml(cordova_config);
+	resolve();
+    });
+    return p;
 } // update_config_xml
 
+function read_adapt_course_json() {
+    const course_json_filename = "course.json";
+    const cordova_tag = "_cordova";
 
+    const course_file = find_file.by_name(course_json_filename, tmpDir);
+    if (!course_file)
+	throw("Could not find a " + course_json_filename + " in the Adapt files");
+
+    console.log("Reading course config from " + course_file.substring(tmpDir.length+1));
+    const course_config = JSON.parse(fs.readFileSync(course_file));
+    if (!course_config[cordova_tag])
+	throw("Could not find " + cordova_tag + " tag in the course config");
+    return course_config[cordova_tag];
+} // read_adapt_course_json
+
+function read_cordova_config_xml() {
+    const config_xml_file = path.join(appDir, "config.xml");
+    if (!fs.existsSync(config_xml_file))
+	throw("Could not find Cordova config.xml.  Which is alarming!");
+
+    const config_doc = elementtree.parse(fs.readFileSync(config_xml_file, "utf-8").toString());
+    return config_doc;
+} // read_cordova_config_xml
+
+function write_cordova_config_xml(cordova_config) {
+    const config_xml_file = path.join(appDir, "config.xml");
+
+    fs.writeFileSync(config_xml_file,
+		     cordova_config.write({indent: 4}),
+		     "utf-8");
+} // write_cordova_config_xml
+
+function xml_set(doc, long_xpath, value) {
+    const xpath = long_xpath.replace(doc.find('.').tag, ".");
+
+    const at = xpath.indexOf('@');
+    const elemPath = (at == -1) ? xpath : xpath.substring(0, at-1);
+    const atPath = (at == -1) ? null : xpath.substring(at+1);
+
+    const node = doc.find(elemPath);
+    if (!node)
+	throw("Could not find " + long_xpath + " in Cordova config xml")
+
+    if (atPath)
+	node.attrib[atPath] = value;
+    else
+	node.text = value;
+} // xml_set
+
+/////////////////////////////////////
+/////////////////////////////////////
 function clean_tmp_directory() {
     if (!fs.existsSync(tmpDir)) {
 	fs.mkdirSync(tmpDir);
@@ -143,6 +256,3 @@ function copy_file(name, srcRootDir, destRootDir) {
     fs.closeSync(fdr);
     fs.closeSync(fdw);
 } // copy_file
-
-/////////////////////////////////////
-/////////////////////////////////////

@@ -4,6 +4,7 @@
   "description": "Takes an Adapt eLearning course and converts it, via the miracle of Cordova, into iOS and Android apps.",
   "main": "adapt-to-app.js",
   "dependencies": {
+    "colors": "^1.1.2",
     "cordova": "^6.5.0",
     "extract-zip": "^1.6.0",
     "fs-extra": "^2.1.2",
