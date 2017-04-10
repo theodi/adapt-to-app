@@ -17,7 +17,9 @@ const adaptToAppDir = path.resolve(path.dirname(process.argv[1]))
 const tmpDir = path.join(adaptToAppDir, "tmp");
 const appDir = path.join(adaptToAppDir, "app");
 
-open_zip_file(process.argv).
+const zipfile = parse_args(process.argv);
+
+open_zip_file(zipfile).
     then(check_environment).
     then(setup_cordova).
     then(setup_adapt_source).
@@ -28,10 +30,10 @@ function banner(msg) {
     console.log(colors.magenta.bold(msg));
 } // banner
 
-function open_zip_file(argv) {
+function open_zip_file(zipfile) {
     banner("Opening Adapt zip file ...");
-    return unwrap_zip_file(argv).
-	then(verify_zip_file);
+    return unwrap_zip_file(zipfile).
+   	then(verify_zip_file);
 } // open_zip_file
 
 function check_environment() {
@@ -72,18 +74,22 @@ function build_android() {
 function build_slim_android() {
     banner("Building slim Android ...");
     add_obb_hooks();
-    cordova.android_build(appDir, "-slim", true);
+    cordova.android_build(appDir, "", true);
 } // build_slim_android
 
 ////////////////////////////////////////////
 ////////////////////////////////////////////
-function unwrap_zip_file(args) {
-    const p = new Promise((resolve, reject) => {
-	if (args.length != 3)
-	    reject("Usage: " + path.basename(args[1]) + " <adapt-zip-file>\n" +
-		   (args.length < 3 ? "Must pass a zip filename" : "Easy Tiger! One zipfile at time!"));
+function parse_args(args) {
+    if (args.length != 3)
+	throw ("Usage: " + path.basename(args[1]) + " <adapt-zip-file>\n" +
+	       (args.length < 3 ? "Must pass a zip filename" : "Easy Tiger! One zipfile at time!"));
+    return args[2];
+} // parse_args
 
-	const source_file = args[2];
+////////////////////////////////////////////
+////////////////////////////////////////////
+function unwrap_zip_file(source_file) {
+    const p = new Promise((resolve, reject) => {
 	if (!fs.existsSync(source_file))
 	    reject("The file " + source_file + " does not exist.");
 
@@ -172,7 +178,7 @@ function add_obb_hooks() {
     remove_obb_hooks();
     const cordova_config = read_cordova_config_xml();
     const android_node = cordova_config.find("./platform[@name='android']");
-    const hooks = [["after_prepare", "../scripts/android/package_videos.rb"],
+    const hooks = [["after_prepare", "../scripts/android/package_videos.js"],
 		   ["after_run", "../scripts/android/install_obb.rb"]];
     for (const hook of hooks) {
 	const hook_node = elementtree.SubElement(android_node, "hook");
