@@ -41,9 +41,9 @@ function check_environment() {
 } // check_environment
 
 function setup_cordova() {
-    const [appId, appName] = grab_adapt_details();
+    const [appId, appName, download_key] = grab_adapt_details();
     banner("Setting up Cordova " + appId + "." + appName + " ...");
-    return cordova.create(appDir, appId, appName);
+    return cordova.create(appDir, appId, appName, download_key);
 } // setup_cordova
 
 function setup_adapt_source() {
@@ -133,7 +133,7 @@ function drop_adapt_into_cordova() {
 
 function grab_adapt_details() {
     const course_json = read_adapt_course_json();
-    return [course_json["id"], course_json["name"].replace(" ", "")];
+    return [course_json["id"], course_json["name"].replace(" ", ""), course_json["download_key"]];
 } // grab_adapt_details
 
 function update_config_xml() {
