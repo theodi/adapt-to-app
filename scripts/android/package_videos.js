@@ -1,3 +1,4 @@
+"use strict";
 const path = require("path");
 const fs = require("fs-extra");
 const find_file = require("../../lib/find_file");

@@ -179,7 +179,7 @@ function add_obb_hooks() {
     const cordova_config = read_cordova_config_xml();
     const android_node = cordova_config.find("./platform[@name='android']");
     const hooks = [["after_prepare", "../scripts/android/package_videos.js"],
-		   ["after_run", "../scripts/android/install_obb.rb"]];
+		   ["after_run", "../scripts/android/install_obb.js"]];
     for (const hook of hooks) {
 	const hook_node = elementtree.SubElement(android_node, "hook");
 	hook_node.set("type", hook[0]);
