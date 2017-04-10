@@ -6,6 +6,7 @@ const android_install = require("./lib/android_install");
 const cordova = require("./lib/cordova_wrapper");
 const progress = require("./lib/progress_bar");
 const find_file = require("./lib/find_file");
+const xml_config = require("./lib/xml_config");
 
 const fs = require("fs-extra");
 const path = require("path");
@@ -156,7 +157,7 @@ function update_config_xml() {
 		value = mappings[i][2] + value;
 	    const xpath = mappings[i][1];
 	    progress.bar(mappings[i][0] + " = " + value, i/mappings.length*100);
-	    xml_set(cordova_config, xpath, value);
+	    xml_config.set(cordova_config, xpath, value);
 	} // for ...
 
 	progress.bar("Updated Cordova config", 100);
@@ -212,42 +213,14 @@ function read_cordova_config_xml() {
     if (!fs.existsSync(config_xml_file))
 	throw("Could not find Cordova config.xml.  Which is alarming!");
 
-    const config_doc = elementtree.parse(fs.readFileSync(config_xml_file, "utf-8").toString());
+    const config_doc = xml_config.read(config_xml_file);
     return config_doc;
 } // read_cordova_config_xml
 
 function write_cordova_config_xml(cordova_config) {
-    const config_xml_file = path.join(appDir, "config.xml");
-
-    fs.writeFileSync(config_xml_file,
-		     cordova_config.write({indent: 4}),
-		     "utf-8");
+    xml_config.write(cordova_config,
+		     path.join(appDir, "config.xml"));
 } // write_cordova_config_xml
-
-function xml_set(doc, long_xpath, value) {
-    const xpath = long_xpath.replace(doc.find('.').tag, ".");
-
-    const at = xpath.indexOf('@');
-    const elemPath = (at == -1) ? xpath : xpath.substring(0, at-1);
-    const atPath = (at == -1) ? null : xpath.substring(at+1);
-
-    let node = doc.find(elemPath);
-    if (!node) {
-	node = doc.find('.');
-	const [, ...steps] = elemPath.split("/");
-	for (const step of steps) {
-	    let next = node.find("./" + step);
-	    if (!next)
-		next = elementtree.SubElement(node, step);
-	    node = next;
-	}
-    } // if ...
-
-    if (atPath)
-	node.set(atPath, value);
-    else
-	node.text = value;
-} // xml_set
 
 /////////////////////////////////////
 /////////////////////////////////////
