@@ -204,7 +204,7 @@ function drop_adapt_into_cordova() {
 
 function grab_adapt_details() {
     const course_json = read_adapt_course_json();
-    return [course_json["id"], course_json["name"].replace(" ", ""), course_json["download_key"]];
+    return [course_json["id"], course_json["name"].replace(" ", ""), course_json["androidPublicKey"]];
 } // grab_adapt_details
 
 function update_config_xml() {
