@@ -20,10 +20,11 @@ const appDir = path.join(adaptToAppDir, "app");
 const [zipfile, action, keystore] = parse_args(process.argv);
 
 open_zip_file(zipfile).
+    then(() => check_keystore(keystore)).
     then(check_environment).
     then(setup_cordova).
     then(setup_adapt_source).
-    then(build_cordova).
+    then(() => build_cordova(keystore)).
     catch((error) => console.log(colors.red(error)));
 
 function banner(msg) {
@@ -36,15 +37,23 @@ function open_zip_file(zipfile) {
    	then(verify_zip_file);
 } // open_zip_file
 
+function check_keystore(keystore) {
+    if (!keystore)
+	return;
+
+    if (!fs.existsSync(keystore.keystore))
+	throw `The keystore file ${keystore.keystore} does not exist`;
+} // check_keystore
+
 function check_environment() {
     banner("Checking Environment ...");
     return java_version.check().
 	then(android_install.check);
-} // check_environment
+} // check_environmen
 
 function setup_cordova() {
     const [appId, appName, download_key] = grab_adapt_details();
-    banner("Setting up Cordova " + appId + "." + appName + " ...");
+    banner(`Setting up Cordova ${appId}.${appName} ...`);
     return cordova.create(appDir, appId, appName, download_key);
 } // setup_cordova
 
@@ -54,9 +63,9 @@ function setup_adapt_source() {
 	then(update_config_xml);
 } // setup_adapt_source
 
-function build_cordova() {
-    build_android();
-    build_slim_android();
+function build_cordova(keystore) {
+    build_android(keystore);
+    build_slim_android(keystore);
     build_ios();
 } // build_cordova
 
@@ -65,16 +74,16 @@ function build_ios() {
     cordova.ios_build(appDir);
 } // build_ios
 
-function build_android() {
+function build_android(keystore) {
     banner("Building Android ...");
     remove_obb_hooks();
-    cordova.android_build(appDir, "-fat")
+    cordova.android_build(appDir, keystore, "-fat")
 } // build_android
 
 function build_slim_android() {
     banner("Building slim Android ...");
     add_obb_hooks();
-    cordova.android_build(appDir, "", true);
+    cordova.android_build(appDir, keystore, "", true);
 } // build_slim_android
 
 ////////////////////////////////////////////
@@ -88,6 +97,8 @@ function parse_args(args) {
 	usage('[options] <zipfile> [build|run]').
 	arguments('<zipfile> [cmd]').
 	option('-k, --keystore <path-to-keystore>', 'Android keystore').
+	option('-a, --keyalias <alias>', 'Keystore alias').
+	option('-p, --keypassword <password>', 'Keystore password').
 	action((zf, c) => {
 	    zipfile = zf;
 	    cmd = c;
@@ -96,9 +107,26 @@ function parse_args(args) {
 	parse(process.argv);
 
     if ((!zipfile) || (cmd && (cmd != 'run' || cmd != 'build')))
-    program.help((txt) => { return colors.red(txt); });
+	program.help((txt) => { return colors.red(txt); });
 
-    return [zipfile, cmd, program.keystore];
+    if (program.keystore && !program.keyalias) {
+	console.log(colors.red("If keystore is specified, the alias must also be provided"));
+	program.help((txt) => { return colors.red(txt); });
+    } // if ...
+
+    if (!program.keystore) {
+	if (program.keyalias)
+	    console.log(colors.red("Ignoring keyalias as no keystore given"));
+	if (program.keypassword)
+	    console.log(colors.red("Ignoring keypassword as no keystore given"));
+    } // if ...
+
+    const keystore = (program.keystore) ?
+	  { "keystore": path.resolve(process.cwd(), program.keystore), "alias":program.keyalias, "password":program.keypassword }
+	  :
+	  false;
+
+    return [zipfile, cmd, keystore];
 } // parse_args
 
 ////////////////////////////////////////////
@@ -106,13 +134,13 @@ function parse_args(args) {
 function unwrap_zip_file(source_file) {
     const p = new Promise((resolve, reject) => {
 	if (!fs.existsSync(source_file))
-	    reject("The file " + source_file + " does not exist.");
+	    reject(`The file ${source_file} does not exist`);
 
 	clean_tmp_directory();
 	const extract = require('extract-zip');
 	extract(source_file, {dir: tmpDir}, (error) => {
 	    if (!error) {
-		console.log("Unzipped " + source_file + " into " + tmpDir);
+		console.log(`Unzipped ${source_file} into ${tmpDir}`);
 		resolve();
 	    } else {
 		reject(error)
@@ -127,7 +155,7 @@ function verify_zip_file() {
 	const check_files = ["index.html", "adapt", "course/config.json"];
 	for (const c of check_files)
 	    if (!fs.existsSync(path.join(tmpDir, c)))
-		reject("Doesn't look like an Adapt zipfile.  Could not find file " + c);
+		reject(`Doesn't look like an Adapt zipfile.  Could not find file ${c}`);
 	resolve();
     });
     return p;
@@ -145,7 +173,7 @@ function drop_adapt_into_cordova() {
 	    copy_file(files[i], tmpDir, www_dir);
 	    progress.bar(files[i], (i/files.length*100));
 	} // for ...
-	progress.bar("Copied " + files.length + " files", 100);
+	progress.bar("Copied `${files.length} files", 100);
 
 	resolve();
     });
@@ -220,12 +248,12 @@ function read_adapt_course_json() {
 
     const course_file = find_file.by_name(course_json_filename, tmpDir);
     if (!course_file)
-	throw("Could not find a " + course_json_filename + " in the Adapt files");
+	throw(`Could not find a ${course_json_filename} in the Adapt files`);
 
     console.log("Reading course config from " + course_file.substring(tmpDir.length+1));
     const course_config = JSON.parse(fs.readFileSync(course_file));
     if (!course_config[cordova_tag])
-	throw("Could not find " + cordova_tag + " tag in the course config");
+	throw(`Could not find ${cordova_tag} tag in the course config`);
     return course_config[cordova_tag];
 } // read_adapt_course_json
 
