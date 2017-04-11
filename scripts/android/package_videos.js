@@ -23,7 +23,7 @@ function package_up(appDir) {
 } // package_up
 
 function gather_videos(apkName, assetsRoot, videoSrcDir) {
-    fs.mkdirsSync(videoSrcDir);
+    make_clean_directory(videoSrcDir);
 
     console.log(`Searching ${assetsRoot} for components.json ...`);
     const components_json_file = find_file.by_name("components.json", assetsRoot);
@@ -38,7 +38,6 @@ function create_obb(apkName, videoSrcDir, buildDir) {
     const obbFileName = path.join(buildDir, `main.1.${apkName}.obb`);
     const zipcmd = `cd ${videoSrcDir} && zip -v -dc -r -Z store ${obbFileName} .`;
 
-    fs.mkdirsSync(buildDir);
     const child_process = require("child_process");
     child_process.execSync(zipcmd, { stdio: "inherit" });
 
@@ -81,3 +80,22 @@ function process_mp4_tag(json, apkName, assetsRoot, videoSrcDir) {
     console.log("    updating json");
     json["mp4"] = `content://${apkName}/${videopath}`;
 } // process_mp4_tag
+
+function make_clean_directory(dir) {
+    if (fs.existsSync(dir))
+	clean_directory(dir);
+    fs.mkdirsSync(dir);
+} // make_or_clean_directory
+
+function clean_directory(dir) {
+    for (const name of fs.readdirSync(dir)) {
+	const fullName = path.join(dir, name);
+	const stat = fs.statSync(fullName);
+	if (stat.isFile())
+	    fs.unlinkSync(fullName);
+	if (stat.isDirectory()) {
+	    clean_directory(fullName);
+	    fs.rmdirSync(fullName);
+	} // if ...
+    } // for ...
+} // clean_directory
