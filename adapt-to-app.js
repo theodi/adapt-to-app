@@ -25,6 +25,7 @@ open_zip_file(zipfile).
     then(setup_cordova).
     then(setup_adapt_source).
     then(() => build_cordova(keystore)).
+    then(() => post_build(action)).
     catch((error) => console.log(colors.red(error)));
 
 function banner(msg) {
@@ -69,6 +70,15 @@ function build_cordova(keystore) {
     build_ios();
 } // build_cordova
 
+function post_build(action) {
+    switch (action) {
+    case "run":
+	run_android();
+	run_ios();
+	break;
+    }
+} // post_build
+
 function build_ios() {
     banner("Building ios ...");
     cordova.ios_build(appDir);
@@ -85,6 +95,18 @@ function build_slim_android() {
     add_obb_hooks();
     cordova.android_build(appDir, keystore, "", true);
 } // build_slim_android
+
+function run_ios() {
+    banner("Running ios ...");
+    cordova.ios_run(appDir);
+} // build_ios
+
+function run_android() {
+    banner("Building Android ...");
+    add_obb_hooks();
+    cordova.android_run(appDir);
+} // build_android
+
 
 ////////////////////////////////////////////
 ////////////////////////////////////////////
@@ -106,7 +128,7 @@ function parse_args(args) {
     program.
 	parse(process.argv);
 
-    if ((!zipfile) || (cmd && (cmd != 'run' || cmd != 'build')))
+    if ((!zipfile) || (cmd && (cmd != 'run' && cmd != 'build')))
 	program.help((txt) => { return colors.red(txt); });
 
     if (program.keystore && !program.keyalias) {
