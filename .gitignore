@@ -3,6 +3,7 @@
 .#*
 *#
 *.apk
+*.obb
 node_modules
 app
 tmp
