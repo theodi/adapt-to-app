@@ -7,7 +7,7 @@ const xml_config = require("../../lib/xml_config");
 module.exports = install_obb;
 
 function install_obb(context) {
-    install(context.opt.projectRoot);
+    install(context.opts.projectRoot);
 } // install_obb
 
 function install(appDir) {
