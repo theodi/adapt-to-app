@@ -5,6 +5,7 @@
   "main": "adapt-to-app.js",
   "dependencies": {
     "colors": "^1.1.2",
+    "commander": "^2.9.0",
     "cordova": "^6.5.0",
     "extract-zip": "^1.6.0",
     "fs-extra": "^2.1.2",

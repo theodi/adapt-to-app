@@ -17,14 +17,14 @@ const adaptToAppDir = path.resolve(path.dirname(process.argv[1]))
 const tmpDir = path.join(adaptToAppDir, "tmp");
 const appDir = path.join(adaptToAppDir, "app");
 
-const zipfile = parse_args(process.argv);
+const [zipfile, action, keystore] = parse_args(process.argv);
 
 open_zip_file(zipfile).
     then(check_environment).
     then(setup_cordova).
     then(setup_adapt_source).
     then(build_cordova).
-    catch((error) => console.log(error));
+    catch((error) => console.log(colors.red(error)));
 
 function banner(msg) {
     console.log(colors.magenta.bold(msg));
@@ -80,10 +80,25 @@ function build_slim_android() {
 ////////////////////////////////////////////
 ////////////////////////////////////////////
 function parse_args(args) {
-    if (args.length != 3)
-	throw ("Usage: " + path.basename(args[1]) + " <adapt-zip-file>\n" +
-	       (args.length < 3 ? "Must pass a zip filename" : "Easy Tiger! One zipfile at time!"));
-    return args[2];
+    const program = require('commander');
+    let zipfile = '';
+    let cmd = '';
+
+    program.
+	usage('[options] <zipfile> [build|run]').
+	arguments('<zipfile> [cmd]').
+	option('-k, --keystore <path-to-keystore>', 'Android keystore').
+	action((zf, c) => {
+	    zipfile = zf;
+	    cmd = c;
+	});
+    program.
+	parse(process.argv);
+
+    if ((!zipfile) || (cmd && (cmd != 'run' || cmd != 'build')))
+    program.help((txt) => { return colors.red(txt); });
+
+    return [zipfile, cmd, program.keystore];
 } // parse_args
 
 ////////////////////////////////////////////
