@@ -248,7 +248,6 @@ function update_config_xml() {
 	    ["authorName", "widget/author"],
 	    ["authorEmail", "widget/author/@email"],
 	    ["authorWebsite", "widget/author/@href"],
-	    ["appIcon", "widget/icon/@src", "../tmp/"]
 	];
 
 	for (let i = 0; i != mappings.length; ++i) {
