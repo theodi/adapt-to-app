@@ -24,6 +24,7 @@ open_zip_file(zipfile).
     then(check_environment).
     then(setup_cordova).
     then(setup_adapt_source).
+    then(munge_icons).
     then(() => build_cordova(keystore)).
     then(() => post_build(action)).
     catch((error) => console.log(colors.red(error)));
@@ -63,6 +64,11 @@ function setup_adapt_source() {
     return drop_adapt_into_cordova().
 	then(update_config_xml);
 } // setup_adapt_source
+
+function munge_icons() {
+    banner("Setup app icons ...");
+    return icon_generation();
+} // munge_icons
 
 function build_cordova(keystore) {
     build_android(keystore);
@@ -202,9 +208,32 @@ function drop_adapt_into_cordova() {
     return p;
 } // drop_adapt_into_cordova
 
+function icon_generation() {
+    const icon_filename = read_adapt_course_json()["appIcon"];
+    if (!icon_filename)
+	return;
+    const icon_path = path.join(appDir, "www", icon_filename);
+
+    const prefix =  path.resolve(appDir, "..", "node_modules/cordova-icon/bin/") + "/";
+    const icon_cmd = `cordova-icon --icon=${icon_path}`;
+    console.log(icon_cmd);
+
+    const cwd = process.cwd();
+    process.chdir(appDir);
+
+    const child_process = require('child_process');
+    child_process.execSync(prefix + icon_cmd, { stdio: 'inherit' });
+
+    process.chdir(cwd);
+} // icon_generation
+
 function grab_adapt_details() {
     const course_json = read_adapt_course_json();
-    return [course_json["id"], course_json["name"].replace(" ", ""), course_json["androidPublicKey"]];
+    return [
+	course_json["id"],
+	course_json["name"].replace(" ", ""),
+	course_json["androidPublicKey"]
+    ];
 } // grab_adapt_details
 
 function update_config_xml() {
