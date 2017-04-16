@@ -57,7 +57,9 @@ function search_for_mp4_tags(json, apkName, assetsRoot, videoSrcDir) {
     for (const key in json) {
 	if (key === "mp4")
 	    process_mp4_tag(json, apkName, assetsRoot, videoSrcDir);
-	else
+	else if (key == "source")
+        process_source_tag(json, apkName, assetsRoot, videoSrcDir);
+    else 
 	    search_for_mp4_tags(json[key], apkName, assetsRoot, videoSrcDir);
     }
 } // search_for_mp4_tags
@@ -83,6 +85,35 @@ function process_mp4_tag(json, apkName, assetsRoot, videoSrcDir) {
     console.log("    updating json");
     json["mp4"] = `content://${apkName}/${videopath}`;
 } // process_mp4_tag
+
+function process_source_tag(json, apkName, assetsRoot, videoSrcDir) {
+    const vimeopath = json["source"];
+    if (vimeopath == "") {
+        return;
+    }
+    console.log(`Found vimeo ${vimeopath}`);
+    console.log("    so let's get to work");
+
+    const vimeoid = vimeopath.substring(vimeopath.lastIndexOf("/")+1,vimeopath.length);
+    const vimeourl =  'https://vimeo.com/' + vimeoid;
+    console.log(vimeourl);
+    
+    const assetSuffix = "assets/" + vimeoid + ".mp4";
+    fs.mkdirsSync(path.join(assetsRoot,"assets"));
+    
+    const destVideoPath = path.join(assetsRoot, assetSuffix);
+
+    const child_process = require('child_process');
+    child_process.execSync('node ../scripts/android/download-vimeo.js ' + vimeourl + " " + destVideoPath);
+
+    console.log(destVideoPath);
+    console.log("    updating json");
+    json["mp4"] = `${assetSuffix}`;
+    json["source"] = "";
+    json["type"] = "";
+    
+    process_mp4_tag(json, apkName, assetsRoot, videoSrcDir)
+}
 
 function make_clean_directory(dir) {
     if (fs.existsSync(dir))

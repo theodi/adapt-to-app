@@ -11,7 +11,8 @@
     "cordova-splash": "^0.9.0",
     "extract-zip": "^1.6.0",
     "fs-extra": "^2.1.2",
-    "wget-improved": "1.4.0"
+    "wget-improved": "1.4.0",
+    "vimeo-downloader": "^1.0.3"
   },
   "devDependencies": {},
   "scripts": {
