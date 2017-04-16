@@ -25,6 +25,7 @@ open_zip_file(zipfile).
     then(setup_cordova).
     then(setup_adapt_source).
     then(munge_icons).
+    then(munge_splash).
     then(() => build_cordova(keystore)).
     then(() => post_build(action)).
     catch((error) => console.log(colors.red(error)));
@@ -68,6 +69,11 @@ function setup_adapt_source() {
 function munge_icons() {
     banner("Setup app icons ...");
     return icon_generation();
+} // munge_icons
+
+function munge_splash() {
+    banner("Setup app splash ...");
+    return splash_generation();
 } // munge_icons
 
 function build_cordova(keystore) {
@@ -223,6 +229,25 @@ function icon_generation() {
 
     const child_process = require('child_process');
     child_process.execSync(prefix + icon_cmd, { stdio: 'inherit' });
+
+    process.chdir(cwd);
+} // icon_generation
+
+function splash_generation() {
+    const splash_filename = read_adapt_course_json()["appSplash"];
+    if (!splash_filename)
+    return;
+    const splash_path = path.join(appDir, "www", splash_filename);
+
+    const prefix =  path.resolve(appDir, "..", "node_modules/cordova-splash/bin/") + "/";
+    const splash_cmd = `cordova-splash --splash=${splash_path}`;
+    console.log(splash_cmd);
+
+    const cwd = process.cwd();
+    process.chdir(appDir);
+
+    const child_process = require('child_process');
+    child_process.execSync(prefix + splash_cmd, { stdio: 'inherit' });
 
     process.chdir(cwd);
 } // icon_generation

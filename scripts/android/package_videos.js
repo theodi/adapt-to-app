@@ -64,6 +64,9 @@ function search_for_mp4_tags(json, apkName, assetsRoot, videoSrcDir) {
 
 function process_mp4_tag(json, apkName, assetsRoot, videoSrcDir) {
     const videopath = json["mp4"];
+    if (videopath == "") {
+    	return;
+    }
     console.log(`Found video ${videopath}`);
     if (videopath.indexOf("://") != -1) {
 	console.log("    but that's a reference to an external URI so let's not worry about it");
