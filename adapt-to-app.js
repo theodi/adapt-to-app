@@ -25,7 +25,7 @@ open_zip_file(zipfile).
     then(setup_cordova).
     then(setup_adapt_source).
     then(munge_icons).
-    //then(munge_splash).
+    then(munge_splash).
     then(() => build_cordova(keystore)).
     then(() => post_build(action)).
     catch((error) => console.log(colors.red(error)));
