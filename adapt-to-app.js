@@ -25,6 +25,7 @@ open_zip_file(zipfile).
     then(setup_cordova).
     then(setup_adapt_source).
     then(munge_icons).
+    then(munge_splash).
     then(() => build_cordova(keystore)).
     then(() => post_build(action)).
     catch((error) => console.log(colors.red(error)));
@@ -70,10 +71,17 @@ function munge_icons() {
     return icon_generation();
 } // munge_icons
 
+function munge_splash() {
+    banner("Setup app splash ...");
+    return splash_generation();
+} // munge_icons
+
 function build_cordova(keystore) {
     build_android(keystore);
+    build_fat_android(keystore);
     build_slim_android(keystore);
     build_ios();
+    build_fat_ios();
 } // build_cordova
 
 function post_build(action) {
@@ -90,11 +98,23 @@ function build_ios() {
     cordova.ios_build(appDir);
 } // build_ios
 
+function build_fat_ios() {
+    banner("Building fat ios ...");
+    add_video_hooks("ios");
+    cordova.ios_build(appDir);
+} // build_ios
+
 function build_android(keystore) {
     banner("Building Android ...");
     remove_obb_hooks();
-    cordova.android_build(appDir, keystore, "-fat")
+    cordova.android_build(appDir, keystore, "-normal")
 } // build_android
+
+function build_fat_android(keystore) {
+    banner("Building fat Android ...");
+    add_video_hooks("android");
+    cordova.android_build(appDir, keystore, "-fat")
+} // build_fat_android
 
 function build_slim_android() {
     banner("Building slim Android ...");
@@ -227,6 +247,25 @@ function icon_generation() {
     process.chdir(cwd);
 } // icon_generation
 
+function splash_generation() {
+    const splash_filename = read_adapt_course_json()["appSplash"];
+    if (!splash_filename)
+    return;
+    const splash_path = path.join(appDir, "www", splash_filename);
+
+    const prefix =  path.resolve(appDir, "..", "node_modules/cordova-splash/bin/") + "/";
+    const splash_cmd = `cordova-splash --splash=${splash_path}`;
+    console.log(splash_cmd);
+
+    const cwd = process.cwd();
+    process.chdir(appDir);
+
+    const child_process = require('child_process');
+    child_process.execSync(prefix + splash_cmd, { stdio: 'inherit' });
+
+    process.chdir(cwd);
+} // icon_generation
+
 function grab_adapt_details() {
     const course_json = read_adapt_course_json();
     return [
@@ -282,12 +321,30 @@ function add_obb_hooks() {
     write_cordova_config_xml(cordova_config);
 } // add_obb_hooks
 
+function add_video_hooks(platform) {
+    remove_obb_hooks();
+    const cordova_config = read_cordova_config_xml();
+    const node = cordova_config.find("./platform[@name='"+platform+"']");
+    const hooks = [["after_prepare", "../scripts/"+platform+"/download_videos.js"]];
+    for (const hook of hooks) {
+    const hook_node = elementtree.SubElement(node, "hook");
+    hook_node.set("type", hook[0]);
+    hook_node.set("src", hook[1]);
+    } // for ...
+
+    write_cordova_config_xml(cordova_config);
+} // add_obb_hooks
+
 function remove_obb_hooks() {
     const cordova_config = read_cordova_config_xml();
-    const android_node = cordova_config.find("./platform[@name='android']");
 
+    const android_node = cordova_config.find("./platform[@name='android']");
     for(const hook of android_node.findall("./hook"))
 	android_node.remove(hook);
+    
+    const ios_node = cordova_config.find("./platform[@name='ios']");
+    for(const hook of ios_node.findall("./hook"))
+    ios_node.remove(hook);
 
     write_cordova_config_xml(cordova_config);
 } // remove_obb_hooks

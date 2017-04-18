@@ -4,9 +4,9 @@ const fs = require("fs-extra");
 const find_file = require("../../lib/find_file");
 const xml_config = require("../../lib/xml_config");
 
-module.exports = package_videos;
+module.exports = download_videos;
 
-function package_videos(context) {
+function download_videos(context) {
     package_up(context.opts.projectRoot);
 } //
 
@@ -16,13 +16,11 @@ function package_up(appDir) {
     const buildDir = path.join(platformRoot, "build/obb");
     const videoSrcDir = path.join(buildDir, "src");
 
-    const apkName = grab_apk_name(appDir);
+    gather_videos(assetsRoot, videoSrcDir);
 
-    gather_videos(apkName, assetsRoot, videoSrcDir);
-    create_obb(apkName, videoSrcDir, buildDir);
 } // package_up
 
-function gather_videos(apkName, assetsRoot, videoSrcDir) {
+function gather_videos(assetsRoot, videoSrcDir) {
     make_clean_directory(videoSrcDir);
 
     console.log(`Searching ${assetsRoot} for components.json ...`);
@@ -30,19 +28,9 @@ function gather_videos(apkName, assetsRoot, videoSrcDir) {
 
     console.log(`Checking ${components_json_file} for video ...`);
     const components_json = JSON.parse(fs.readFileSync(components_json_file));
-    search_for_mp4_tags(components_json, apkName, assetsRoot, videoSrcDir);
+    search_for_tags(components_json, assetsRoot, videoSrcDir);
     fs.writeFileSync(components_json_file, JSON.stringify(components_json));
 } // function ...
-
-function create_obb(apkName, videoSrcDir, buildDir) {
-    const obbFileName = path.join(buildDir, `main.1.${apkName}.obb`);
-    const zipcmd = `cd ${videoSrcDir} && zip -v -dc -r -Z store ${obbFileName} .`;
-
-    const child_process = require("child_process");
-    child_process.execSync(zipcmd, { stdio: "inherit" });
-
-    console.log(`Expansion file create at ${obbFileName}`);
-} // create_obb
 
 function grab_apk_name(appDir) {
     const config_xml = xml_config.read(path.join(appDir, "config.xml"));
@@ -50,43 +38,18 @@ function grab_apk_name(appDir) {
 } // grab_apk_name
 
 
-function search_for_mp4_tags(json, apkName, assetsRoot, videoSrcDir) {
+function search_for_tags(json, assetsRoot, videoSrcDir) {
     if (typeof(json) != "object")
 	return;
-
     for (const key in json) {
-	if (key === "mp4")
-	    process_mp4_tag(json, apkName, assetsRoot, videoSrcDir);
-	else if (key == "source")
-        process_source_tag(json, apkName, assetsRoot, videoSrcDir);
+	if (key == "source")
+        process_source_tag(json, assetsRoot, videoSrcDir);
     else 
-	    search_for_mp4_tags(json[key], apkName, assetsRoot, videoSrcDir);
+	    search_for_tags(json[key], assetsRoot, videoSrcDir);
     }
 } // search_for_mp4_tags
 
-function process_mp4_tag(json, apkName, assetsRoot, videoSrcDir) {
-    const videopath = json["mp4"];
-    if (videopath == "") {
-    	return;
-    }
-    console.log(`Found video ${videopath}`);
-    if (videopath.indexOf("://") != -1) {
-	console.log("    but that's a reference to an external URI so let's not worry about it");
-	return;
-    } // if ...
-
-    console.log("    so let's get to work");
-    const fullVideoPath = path.join(assetsRoot, videopath);
-    const destVideoPath = path.join(videoSrcDir, videopath);
-    console.log(`    moving ${fullVideoPath} to ${destVideoPath}`);
-    fs.mkdirsSync(path.dirname(destVideoPath));
-    fs.moveSync(fullVideoPath, destVideoPath);
-
-    console.log("    updating json");
-    json["mp4"] = `content://${apkName}/${videopath}`;
-} // process_mp4_tag
-
-function process_source_tag(json, apkName, assetsRoot, videoSrcDir) {
+function process_source_tag(json, assetsRoot, videoSrcDir) {
     const source = json["source"];
     if (source == "") {
         return;
@@ -114,9 +77,8 @@ function process_source_tag(json, apkName, assetsRoot, videoSrcDir) {
     json["source"] = "";
     json["type"] = "";
     json["mp4"] = `${assetSuffix}`;
-    
-    process_mp4_tag(json, apkName, assetsRoot, videoSrcDir)
-}
+
+} // process_source_tag
 
 function make_clean_directory(dir) {
     if (fs.existsSync(dir))
