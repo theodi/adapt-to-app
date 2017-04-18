@@ -142,31 +142,34 @@ function parse_args(args) {
     let cmd = '';
 
     program.
-	usage('[options] <zipfile> [build|run]').
-	arguments('<zipfile> [cmd]').
-	option('-k, --keystore <path-to-keystore>', 'Android keystore').
-	option('-a, --keyalias <alias>', 'Keystore alias').
-	option('-p, --keypassword <password>', 'Keystore password').
-	action((zf, c) => {
+	   usage('[options] <zipfile> [build|run]').
+	   arguments('<zipfile> [cmd]').
+	   option('-k, --keystore <path-to-keystore>', 'Android keystore').
+	   option('-a, --keyalias <alias>', 'Keystore alias').
+	   option('-p, --keypassword <password>', 'Keystore password').
+	   action((zf, c) => {
 	    zipfile = zf;
 	    cmd = c;
-	});
+	   });
     program.
-	parse(process.argv);
+	   parse(process.argv);
+
+    console.log("keystore: " + program.keystore);
+    console.log("keyalias: " + program.keyalias);
 
     if ((!zipfile) || (cmd && (cmd != 'run' && cmd != 'build')))
-	program.help((txt) => { return colors.red(txt); });
+	   program.help((txt) => { return colors.red(txt); });
 
     if (program.keystore && !program.keyalias) {
-	console.log(colors.red("If keystore is specified, the alias must also be provided"));
-	program.help((txt) => { return colors.red(txt); });
+	   console.log(colors.red("If keystore is specified, the alias must also be provided"));
+	   program.help((txt) => { return colors.red(txt); });
     } // if ...
 
     if (!program.keystore) {
-	if (program.keyalias)
-	    console.log(colors.red("Ignoring keyalias as no keystore given"));
-	if (program.keypassword)
-	    console.log(colors.red("Ignoring keypassword as no keystore given"));
+	   if (program.keyalias)
+	       console.log(colors.red("Ignoring keyalias as no keystore given"));
+	   if (program.keypassword)
+	       console.log(colors.red("Ignoring keypassword as no keystore given"));
     } // if ...
 
     const keystore = (program.keystore) ?
