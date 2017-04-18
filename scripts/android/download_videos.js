@@ -51,7 +51,7 @@ function search_for_tags(json, assetsRoot, videoSrcDir) {
 
 function process_source_tag(json, assetsRoot, videoSrcDir) {
     const source = json["source"];
-    if (vimeopath == "") {
+    if (source == "") {
         resolve(0);
     }
     console.log(`Found external video ${json["source"]}`);
@@ -62,7 +62,7 @@ function process_source_tag(json, assetsRoot, videoSrcDir) {
         return;
     } // if ...
 
-    const vimeoid = vimeopath.substring(vimeopath.lastIndexOf("/")+1,vimeopath.length);
+    const vimeoid = source.substring(source.lastIndexOf("/")+1,source.length);
     const vimeourl =  'https://vimeo.com/' + vimeoid;
         
     const assetSuffix = "assets/" + vimeoid + ".mp4";
