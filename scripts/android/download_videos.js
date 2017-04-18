@@ -41,7 +41,6 @@ function grab_apk_name(appDir) {
 function search_for_tags(json, assetsRoot, videoSrcDir) {
     if (typeof(json) != "object")
 	return;
-
     for (const key in json) {
 	if (key == "source")
         process_source_tag(json, assetsRoot, videoSrcDir);
@@ -50,53 +49,36 @@ function search_for_tags(json, assetsRoot, videoSrcDir) {
     }
 } // search_for_mp4_tags
 
-function process_source_tag(json, apkName, videoSrcDir) {
-    const p = new Promise((resolve, reject) => {
-        const source = json["source"];
-        if (vimeopath == "") {
-            resolve(0);
-        }
-        console.log(`Found external video ${json["source"]}`);
+function process_source_tag(json, assetsRoot, videoSrcDir) {
+    const source = json["source"];
+    if (vimeopath == "") {
+        resolve(0);
+    }
+    console.log(`Found external video ${json["source"]}`);
 
-        const type = json["type"];
-        if ((source.indexOf("player.vimeo") == -1) && (type != "video/vimeo")) {
-            console.log("    but I only know how to download from Vimeo");
-            resolve(0);
-        } // if ...
+    const type = json["type"];
+    if ((source.indexOf("player.vimeo") == -1) && (type != "video/vimeo")) {
+        console.log("    but I only know how to download from Vimeo");
+        return;
+    } // if ...
 
-        const vimeoid = vimeopath.substring(vimeopath.lastIndexOf("/")+1,vimeopath.length);
-        const vimeourl =  'https://vimeo.com/' + vimeoid;
+    const vimeoid = vimeopath.substring(vimeopath.lastIndexOf("/")+1,vimeopath.length);
+    const vimeourl =  'https://vimeo.com/' + vimeoid;
         
-        const assetSuffix = "assets/" + vimeoid + ".mp4";
-        fs.mkdirsSync(path.join(assetsRoot,"assets"));
+    const assetSuffix = "assets/" + vimeoid + ".mp4";
+    fs.mkdirsSync(path.join(assetsRoot,"assets"));
 
-        const destVideoPath = path.join(assetsRoot, assetSuffix);
+    const destVideoPath = path.join(assetsRoot, assetSuffix);
 
-        console.log(`    downloading ${vimeourl} to ${destVideoPath} ...`);
+    const child_process = require('child_process');
+    child_process.execSync('node ../scripts/download-vimeo.js ' + vimeourl + " " + destVideoPath);
 
-        const vidl = require("vimeo-downloader");
-        let total = 0;
+    console.log("    updating json");
+    json["source"] = "";
+    json["type"] = "";
+    json["mp4"] = `${assetSuffix}`;
 
-        const stream = vidl(vimeourl, { quality: "720p", format: "mp4" });
-        stream.pipe(fs.createWriteStream(destVideoPath));
-
-        stream.on('data', (chunk) => {
-            total += chunk.length
-            const kb = Math.floor(total/1024);
-            process.stdout.write(`\r    downloaded ${kb}kB`);
-        });
-
-        stream.on('end', () => {
-            console.log("    complete");
-            console.log("    updating json");
-            json["source"] = "";
-            json["type"] = "";
-            json["mp4"] = `${assetSuffix}`;
-            resolve(0);
-        });
-    });
-    return p;
-} // download_linked_video
+} // process_source_tag
 
 function make_clean_directory(dir) {
     if (fs.existsSync(dir))
