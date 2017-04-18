@@ -52,7 +52,7 @@ function search_for_tags(json, assetsRoot, videoSrcDir) {
 function process_source_tag(json, assetsRoot, videoSrcDir) {
     const source = json["source"];
     if (source == "") {
-        resolve(0);
+        return;
     }
     console.log(`Found external video ${json["source"]}`);
 
@@ -71,7 +71,7 @@ function process_source_tag(json, assetsRoot, videoSrcDir) {
     const destVideoPath = path.join(assetsRoot, assetSuffix);
 
     const child_process = require('child_process');
-    child_process.execSync('node ../scripts/download-vimeo.js ' + vimeourl + " " + destVideoPath);
+    child_process.execSync('node ../scripts/download-vimeo.js ' + vimeourl + " " + destVideoPath,{stdio:[0,1,2]});
 
     console.log("    updating json");
     json["source"] = "";
