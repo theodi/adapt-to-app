@@ -17,16 +17,27 @@ const adaptToAppDir = path.resolve(path.dirname(process.argv[1]))
 const tmpDir = path.join(adaptToAppDir, "tmp");
 const appDir = path.join(adaptToAppDir, "app");
 
-const [zipfile, action, keystore] = parse_args(process.argv);
+const [zipfile, action, keystore, build, type] = parse_args(process.argv);
+
+var appPath = fs.statSync(appDir);
+var tmpPath = fs.statSync(tmpDir);
+if (appPath.isDirectory()) {
+    clean_directory(appDir);
+    fs.rmdirSync(appDir);
+}
+if (tmpPath.isDirectory()) {
+    clean_directory(tmpDir);
+    fs.rmdirSync(tmpDir);
+}
 
 open_zip_file(zipfile).
     then(() => check_keystore(keystore)).
     then(check_environment).
-    then(setup_cordova).
+    then(() => setup_cordova(type)).
     then(setup_adapt_source).
     then(munge_icons).
     then(munge_splash).
-    then(() => build_cordova(keystore)).
+    then(() => build_cordova(keystore,build,type)).
     then(() => post_build(action)).
     catch((error) => console.log(colors.red(error)));
 
@@ -54,10 +65,10 @@ function check_environment() {
 	then(android_install.check);
 } // check_environmen
 
-function setup_cordova() {
+function setup_cordova(type) {
     const [appId, appName, download_key] = grab_adapt_details();
     banner(`Setting up Cordova ${appId}.${appName} ...`);
-    return cordova.create(appDir, appId, appName, download_key);
+    return cordova.create(appDir, appId, appName, download_key, type);
 } // setup_cordova
 
 function setup_adapt_source() {
@@ -76,12 +87,38 @@ function munge_splash() {
     return splash_generation();
 } // munge_icons
 
-function build_cordova(keystore) {
-    build_android(keystore);
-    build_fat_android(keystore);
-    build_slim_android(keystore);
-    build_ios();
-    build_fat_ios();
+function build_cordova(keystore,build,type) {
+    if (build == "android") {
+        if (type == "normal") {
+            console.log("Building slim android (with obb)");
+            build_slim_android(keystore);        
+        } 
+        if (type == "lite") {
+            console.log("Building lite andoird (Without obb)");
+            build_android(keystore);        
+        }
+        if (type == "full") {
+            console.log("Building all-in-one andoird (single APK only)");
+            build_fat_android(keystore);        
+        }
+        if (!type) {
+            console.log("Building slim android (with obb)");
+            build_slim_android(keystore);
+        }
+    } else if (build == "ios") {
+        if (type == "lite") {
+            console.log("Building lite IOS");
+            build_ios();
+        } else {
+            console.log("Building all-in-one IOS");
+            build_fat_ios();
+        }
+    } else {
+        console.log("Building slim android (with obb)");
+        build_slim_android(keystore);
+        console.log("Building all-in-one IOS");
+        build_fat_ios();
+    }
 } // build_cordova
 
 function post_build(action) {
@@ -129,7 +166,7 @@ function run_ios() {
 
 function run_android() {
     banner("Building Android ...");
-    add_obb_hooks();
+    //add_obb_hooks();
     cordova.android_run(appDir);
 } // build_android
 
@@ -140,6 +177,8 @@ function parse_args(args) {
     const program = require('commander');
     let zipfile = '';
     let cmd = '';
+    let build = '';
+    let type = '';
 
     program.
 	   usage('[options] <zipfile> [build|run]').
@@ -147,6 +186,8 @@ function parse_args(args) {
 	   option('-k, --keystore <path-to-keystore>', 'Android keystore').
 	   option('-a, --keyalias <alias>', 'Keystore alias').
 	   option('-p, --keypassword <password>', 'Keystore password').
+       option('-b, --build <build>', 'What to build, android or ios').
+       option('-t, --type <type>', 'App type "lite" (vidoes in vimeo) or "normal" (videos in obb) or "full" (videos in app)').
 	   action((zf, c) => {
 	    zipfile = zf;
 	    cmd = c;
@@ -177,7 +218,15 @@ function parse_args(args) {
 	  :
 	  false;
 
-    return [zipfile, cmd, keystore];
+    if (program.build) {
+        build = program.build;
+    }
+
+    if (program.type) {
+        type = program.type;
+    }
+
+    return [zipfile, cmd, keystore, build, type];
 } // parse_args
 
 ////////////////////////////////////////////
@@ -226,6 +275,17 @@ function drop_adapt_into_cordova() {
 	} // for ...
 	progress.bar("Copied `${files.length} files", 100);
 
+	var replace = require('replace');
+	var someFile = www_dir + '/adapt/js/adapt.min.js';
+	console.log(someFile);
+	replace({
+		regex: 't.source[^;]*',
+		replacement: "",
+		paths: [someFile],
+		recursive: true,
+		silent: false,
+	});
+
 	resolve();
     });
     return p;
@@ -273,7 +333,8 @@ function grab_adapt_details() {
     const course_json = read_adapt_course_json();
     return [
 	course_json["id"],
-	course_json["name"].replace(" ", ""),
+	course_json["name"],
+	//course_json["name"].replace(/ /g, ""),
 	course_json["androidPublicKey"]
     ];
 } // grab_adapt_details
